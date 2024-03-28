@@ -34,6 +34,14 @@
 
 #define BSIZE 512
 
+#define CL_EXE "cl.exe"
+
+#if !defined(HAVE_POPEN) && defined(_WIN32)
+#define popen _popen
+#define pclose _pclose
+#define HAVE_POPEN
+#endif
+
 /* Pre-declare the preprocessor module object. */
 yasm_preproc_module yasm_cpp_LTX_preproc;
 
@@ -98,12 +106,13 @@ cpp_build_cmdline(yasm_preproc_cpp *pp, const char *extra)
 {
     char *cmdline, *p, *limit;
     cpp_arg_entry *arg;
+    size_t cpp_len = strlen(CPP_PROG), cl_len = strlen(CL_EXE);
 
     /* Initialize command line. */
-    cmdline = p = yasm_xmalloc(strlen(CPP_PROG)+CMDLINE_SIZE);
+    cmdline = p = yasm_xmalloc(cpp_len +CMDLINE_SIZE);
     limit = p + CMDLINE_SIZE;
     strcpy(p, CPP_PROG);
-    p += strlen(CPP_PROG);
+    p += cpp_len;
 
     arg = TAILQ_FIRST(&pp->cpp_args);
 
@@ -123,7 +132,10 @@ cpp_build_cmdline(yasm_preproc_cpp *pp, const char *extra)
         APPEND(extra);
     }
     /* Append final arguments. */
-    APPEND(" -x assembler-with-cpp ");
+    if (cpp_len >= cl_len && !strcmp(CPP_PROG+cpp_len-cl_len, CL_EXE))
+        APPEND(" /nologo /E ");
+    else
+        APPEND(" -x assembler-with-cpp ");
     APPEND(pp->filename);
 
     return cmdline;
